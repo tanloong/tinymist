@@ -171,7 +171,7 @@ undocumented_unsafe_blocks = "warn"
 
 [patch.crates-io]
 
-# tinymist-assets = { path = "./crates/tinymist-assets/" }
+tinymist-assets = { path = "./crates/tinymist-assets/" }
 
 typst = { git = "https://github.com/Myriad-Dreamin/typst.git", tag = "tinymist-v0.11.1-2" }
 typst-timing = { git = "https://github.com/Myriad-Dreamin/typst.git", tag = "tinymist-v0.11.1-2" }
@@ -190,12 +190,12 @@ typst-syntax = { git = "https://github.com/Myriad-Dreamin/typst.git", tag = "tin
 # typst-ts-svg-exporter = { git = "https://github.com/Myriad-Dreamin/typst.ts/", rev = "11b1ef0909ee6ded49eb84db999af14276125a62" }
 # reflexo = { git = "https://github.com/Myriad-Dreamin/typst.ts/", rev = "11b1ef0909ee6ded49eb84db999af14276125a62" }
 # reflexo-world = { git = "https://github.com/Myriad-Dreamin/typst.ts/", rev = "11b1ef0909ee6ded49eb84db999af14276125a62" }
-# typst-ts-core = { git = "https://github.com/Myriad-Dreamin/typst.ts/", rev = "11b1ef0909ee6ded49eb84db999af14276125a62" }
-# typst-ts-compiler = { git = "https://github.com/Myriad-Dreamin/typst.ts/", rev = "11b1ef0909ee6ded49eb84db999af14276125a62" }
+# reflexo-typst = { git = "https://github.com/Myriad-Dreamin/typst.ts/", rev = "11b1ef0909ee6ded49eb84db999af14276125a62" }
+# reflexo-vec2svg = { git = "https://github.com/Myriad-Dreamin/typst.ts/", rev = "11b1ef0909ee6ded49eb84db999af14276125a62" }
 
 # typst-ts-svg-exporter = { path = "../typst.ts/exporter/svg" }
-# reflexo = { path = "../typst.ts/crates/reflexo/" }
-# reflexo-world = { path = "../typst.ts/crates/reflexo-world/" }
-# typst-ts-core = { path = "../typst.ts/core" }
-# typst-ts-compiler = { path = "../typst.ts/compiler" }
+reflexo = { path = "../typst.ts/crates/reflexo/" }
+reflexo-world = { path = "../typst.ts/crates/reflexo-world/" }
+reflexo-typst = { path = "../typst.ts/crates/reflexo-typst/" }
+reflexo-vec2svg = { path = "../typst.ts/crates/conversion/vec2svg/" }
 # typstyle = { path = "../typstyle" }
