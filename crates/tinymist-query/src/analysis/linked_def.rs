@@ -282,7 +282,8 @@ fn find_ref_definition(
         let name_range = (name_range.start <= name_range.end).then_some(name_range);
         (Some((fid, rng)), name_range)
     } else {
-        let span = elem.labelled_at();
+        // let span = elem.labelled_at();
+        let span = Span::detached();
         let span = if !span.is_detached() {
             span
         } else {
