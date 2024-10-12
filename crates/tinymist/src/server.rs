@@ -37,6 +37,8 @@ use super::{init::*, *};
 use crate::actor::editor::EditorRequest;
 use crate::actor::typ_client::CompileClientActor;
 
+pub(crate) use futures::Future;
+
 pub(super) fn as_path(inp: TextDocumentIdentifier) -> PathBuf {
     as_path_(inp.uri)
 }
@@ -220,6 +222,7 @@ impl LanguageState {
             // latency insensitive
             .with_request_::<InlayHintRequest>(State::inlay_hint)
             .with_request_::<DocumentColor>(State::document_color)
+            .with_request_::<DocumentLinkRequest>(State::document_link)
             .with_request_::<ColorPresentationRequest>(State::color_presentation)
             .with_request_::<HoverRequest>(State::hover)
             .with_request_::<CodeActionRequest>(State::code_action)
@@ -722,6 +725,11 @@ impl LanguageState {
         run_query!(req_id, self.DocumentColor(path))
     }
 
+    fn document_link(&mut self, req_id: RequestId, params: DocumentLinkParams) -> ScheduledResult {
+        let path = as_path(params.text_document);
+        run_query!(req_id, self.DocumentLink(path))
+    }
+
     fn color_presentation(
         &mut self,
         req_id: RequestId,
@@ -1064,6 +1072,7 @@ impl LanguageState {
                 InlayHint(req) => handle.run_semantic(snap, req, R::InlayHint),
                 DocumentHighlight(req) => handle.run_semantic(snap, req, R::DocumentHighlight),
                 DocumentColor(req) => handle.run_semantic(snap, req, R::DocumentColor),
+                DocumentLink(req) => handle.run_semantic(snap, req, R::DocumentLink),
                 CodeAction(req) => handle.run_semantic(snap, req, R::CodeAction),
                 CodeLens(req) => handle.run_semantic(snap, req, R::CodeLens),
                 Completion(req) => handle.run_stateful(snap, req, R::Completion),
