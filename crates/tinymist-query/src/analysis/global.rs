@@ -19,10 +19,10 @@ use typst::{model::Document, text::Font};
 
 use crate::analysis::prelude::*;
 use crate::analysis::{
-    analyze_bib, analyze_import_, analyze_signature, post_type_check, BibInfo, DocString,
-    ImportInfo, PathPreference, Signature, SignatureTarget, Ty, TypeScheme,
+    analyze_bib, analyze_import_, analyze_signature, post_type_check, BibInfo, ImportInfo,
+    PathPreference, Signature, SignatureTarget, Ty, TypeScheme,
 };
-use crate::docs::{DocStringKind, SignatureDocs, VarDocs};
+use crate::docs::{SignatureDocs, VarDocs};
 use crate::syntax::{
     construct_module_dependencies, find_expr_in_import, get_deref_target, resolve_id_by_path,
     scan_workspace_files, DerefTarget, ExprInfo, LexicalHierarchy, LexicalScope, ModuleDependency,
@@ -73,7 +73,6 @@ impl Analysis {
     pub fn clear_cache(&self) {
         self.caches.signatures.clear();
         self.caches.static_signatures.clear();
-        self.caches.docstrings.clear();
         self.caches.terms.clear();
         self.caches.expr_stage.clear();
         self.caches.type_check.clear();
@@ -93,7 +92,6 @@ pub struct AnalysisGlobalCaches {
     expr_stage: CacheMap<(u64, DeferredCompute<Arc<ExprInfo>>)>,
     type_check: CacheMap<(u64, DeferredCompute<Option<Arc<TypeScheme>>>)>,
     static_signatures: CacheMap<(u64, Source, Span, DeferredCompute<Option<Signature>>)>,
-    docstrings: CacheMap<(u64, Option<Arc<DocString>>)>,
     signatures: CacheMap<(u64, Func, DeferredCompute<Option<Signature>>)>,
     terms: CacheMap<(u64, Value, Ty)>,
 }
@@ -321,29 +319,7 @@ impl<'w> AnalysisContext<'w> {
 
     /// Get a module by file id.
     pub fn module_by_id(&self, fid: TypstFileId) -> SourceResult<Module> {
-        let source = self.source_by_id(fid).at(Span::detached())?;
-        self.module_by_src(source)
-    }
-
-    /// Get a module by string.
-    pub fn module_by_str(&self, rr: String) -> Option<Module> {
-        let src = Source::new(*DETACHED_ENTRY, rr);
-        self.module_by_src(src).ok()
-    }
-
-    /// Get (Create) a module by source.
-    pub fn module_by_src(&self, source: Source) -> SourceResult<Module> {
-        let route = Route::default();
-        let traced = Traced::default();
-        let mut sink = Sink::default();
-
-        typst::eval::eval(
-            (self.world() as &dyn World).track(),
-            traced.track(),
-            sink.track_mut(),
-            route.track(),
-            &source,
-        )
+        self.shared().module_by_id(fid)
     }
 
     /// Get a syntax object at a position.
@@ -430,27 +406,6 @@ impl<'w> AnalysisContext<'w> {
 
     pub(crate) fn signature_docs(&mut self, runtime_fn: &Value) -> Option<SignatureDocs> {
         crate::docs::signature_docs(self, runtime_fn, None)
-    }
-
-    pub(crate) fn compute_docstring(
-        &self,
-        fid: TypstFileId,
-        docs: String,
-        kind: DocStringKind,
-    ) -> Option<Arc<DocString>> {
-        let h = hash128(&(&fid, &docs, &kind));
-        let res = if let Some(res) = self.analysis.caches.docstrings.get(&h) {
-            res.1.clone()
-        } else {
-            let res = crate::analysis::tyck::compute_docstring(self, fid, docs, kind).map(Arc::new);
-            self.analysis
-                .caches
-                .docstrings
-                .insert(h, (self.lifetime, res.clone()));
-            res
-        };
-
-        res
     }
 
     /// Get the import information of a source file.
@@ -580,10 +535,6 @@ impl<'w> AnalysisContext<'w> {
             .caches
             .terms
             .retain(|_, (l, _, _)| lifetime - *l < 60);
-        self.analysis
-            .caches
-            .docstrings
-            .retain(|_, (l, _)| lifetime - *l < 60);
         self.analysis
             .caches
             .signatures
@@ -832,6 +783,33 @@ impl SharedContext {
             ast::Expr::Str(v) => Value::Str(v.get().into()),
             _ => return None,
         })
+    }
+
+    /// Get a module by file id.
+    pub fn module_by_id(&self, fid: TypstFileId) -> SourceResult<Module> {
+        let source = self.source_by_id(fid).at(Span::detached())?;
+        self.module_by_src(source)
+    }
+
+    /// Get a module by string.
+    pub fn module_by_str(&self, rr: String) -> Option<Module> {
+        let src = Source::new(*DETACHED_ENTRY, rr);
+        self.module_by_src(src).ok()
+    }
+
+    /// Get (Create) a module by source.
+    pub fn module_by_src(&self, source: Source) -> SourceResult<Module> {
+        let route = Route::default();
+        let traced = Traced::default();
+        let mut sink = Sink::default();
+
+        typst::eval::eval(
+            ((&self.world) as &dyn World).track(),
+            traced.track(),
+            sink.track_mut(),
+            route.track(),
+            &source,
+        )
     }
 
     /// Compute the signature of a function.
