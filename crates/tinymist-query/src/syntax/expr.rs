@@ -27,17 +27,17 @@ use super::{compute_docstring, DocCommentMatcher, DocString, InterpretMode};
 pub enum Expr {
     /// A sequence of expressions
     Seq(Interned<Vec<Expr>>),
-    /// A array literal
+    /// An array literal
     Array(Interned<Vec<ArgExpr>>),
     /// A dict literal
     Dict(Interned<Vec<ArgExpr>>),
     /// An args literal
     Args(Interned<Vec<ArgExpr>>),
-    /// An args literal
+    /// A pattern
     Pattern(Interned<Pattern>),
-    /// A element literal
+    /// An element literal
     Element(Interned<ElementExpr>),
-    /// A unary operation
+    /// An unary operation
     Unary(Interned<UnExpr>),
     /// A binary operation
     Binary(Interned<BinExpr>),
@@ -47,19 +47,33 @@ pub enum Expr {
     Func(Interned<FuncExpr>),
     /// A let
     Let(Interned<LetExpr>),
+    /// A show
     Show(Interned<ShowExpr>),
+    /// A set
     Set(Interned<SetExpr>),
+    /// A reference
     Ref(Interned<RefExpr>),
+    /// A content reference
     ContentRef(Interned<ContentRefExpr>),
+    /// A select
     Select(Interned<SelectExpr>),
+    /// An import
     Import(Interned<ImportExpr>),
+    /// An include
     Include(Interned<IncludeExpr>),
+    /// A contextual
     Contextual(Interned<Expr>),
+    /// A conditional
     Conditional(Interned<IfExpr>),
+    /// A while loop
     WhileLoop(Interned<WhileExpr>),
+    /// A for loop
     ForLoop(Interned<ForExpr>),
+    /// A type
     Type(Ty),
+    /// A declaration
     Decl(DeclExpr),
+    /// A star import
     Star,
 }
 
@@ -70,11 +84,7 @@ impl fmt::Display for Expr {
 }
 
 pub(crate) fn expr_of(ctx: Arc<SharedContext>, source: Source) -> Arc<ExprInfo> {
-    log::debug!(
-        "expr_of: {:?} in thread {:?}",
-        source.id(),
-        rayon::current_thread_index()
-    );
+    log::debug!("expr_of: {:?}", source.id());
 
     let resolves_base = Arc::new(Mutex::new(vec![]));
     let resolves = resolves_base.clone();
@@ -95,10 +105,9 @@ pub(crate) fn expr_of(ctx: Arc<SharedContext>, source: Source) -> Arc<ExprInfo> 
             .unwrap_or_default(),
     );
 
-    let (exports, root) = rayon::scope(|s| {
+    let (exports, root) = {
         let mut w = ExprWorker {
             fid: source.id(),
-            _scope: s,
             ctx,
             imports,
             docstings,
@@ -118,7 +127,7 @@ pub(crate) fn expr_of(ctx: Arc<SharedContext>, source: Source) -> Arc<ExprInfo> 
         w.collect_buffer();
 
         (w.summarize_scope(), root)
-    });
+    };
 
     let info = ExprInfo {
         fid: source.id(),
@@ -226,9 +235,8 @@ struct LexicalContext {
     last: ExprScope,
 }
 
-pub(crate) struct ExprWorker<'a, 's> {
+pub(crate) struct ExprWorker {
     fid: TypstFileId,
-    _scope: &'a rayon::Scope<'s>,
     ctx: Arc<SharedContext>,
     imports: Arc<Mutex<FxHashSet<TypstFileId>>>,
     import_buffer: Vec<TypstFileId>,
@@ -241,7 +249,7 @@ pub(crate) struct ExprWorker<'a, 's> {
     comment_matcher: DocCommentMatcher,
 }
 
-impl<'a, 's> ExprWorker<'a, 's> {
+impl ExprWorker {
     fn with_scope<R>(&mut self, f: impl FnOnce(&mut Self) -> R) -> R {
         self.lexical.scopes.push(std::mem::replace(
             &mut self.lexical.last,

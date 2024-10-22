@@ -53,33 +53,34 @@ pub(crate) fn find_references(
         }
     };
 
-    let def = find_definition(ctx, source, document, deref_target)?;
+    let def = find_definition(ctx.shared(), source, document, deref_target)?;
 
     // todo: reference of builtin items?
     let (def_fid, def_range) = def.def_at?;
 
     let def_ident = IdentRef {
-        name: def.name.clone(),
+        name: def.name.as_ref().into(),
         range: def_range,
     };
 
     let def_source = ctx.source_by_id(def_fid).ok()?;
-    let root_def_use = ctx.def_use(def_source)?;
-    let root_def_id = root_def_use.get_def(def_fid, &def_ident).map(|e| e.0);
+    let root_expr_info = ctx.expr_stage(&def_source);
+    // let root_def_id = root_expr_info.get_def(def_fid, &def_ident).map(|e| e.0);
 
-    let worker = ReferencesWorker {
-        ctx: ctx.fork_for_search(),
-        references: vec![],
-        def_fid,
-        def_ident,
-        finding_label,
-    };
+    // let worker = ReferencesWorker {
+    //     ctx: ctx.fork_for_search(),
+    //     references: vec![],
+    //     def_fid,
+    //     def_ident,
+    //     finding_label,
+    // };
 
-    if finding_label {
-        worker.label_root()
-    } else {
-        worker.ident_root(root_def_use, root_def_id?)
-    }
+    // if finding_label {
+    //     worker.label_root()
+    // } else {
+    //     worker.ident_root(root_expr_info, root_def_id?)
+    // }
+    todo!()
 }
 
 struct ReferencesWorker<'a, 'w> {
@@ -109,50 +110,52 @@ impl<'a, 'w> ReferencesWorker<'a, 'w> {
 
     fn ident_root(
         mut self,
-        def_use: Arc<crate::analysis::DefUseInfo>,
+        expr_info: Arc<crate::syntax::ExprInfo>,
         def_id: DefId,
     ) -> Option<Vec<LspLocation>> {
-        let def_source = self.ctx.ctx.source_by_id(self.def_fid).ok()?;
-        let uri = self.ctx.ctx.uri_for_id(self.def_fid).ok()?;
+        // let def_source = self.ctx.ctx.source_by_id(self.def_fid).ok()?;
+        // let uri = self.ctx.ctx.uri_for_id(self.def_fid).ok()?;
 
-        self.push_idents(&def_source, &uri, def_use.get_refs(def_id));
+        // self.push_idents(&def_source, &uri, expr_info.get_refs(def_id));
 
-        if def_use.is_exported(def_id) {
-            // Find dependents
-            self.ctx.push_dependents(self.def_fid);
-            while let Some(ref_fid) = self.ctx.worklist.pop() {
-                self.file(ref_fid);
-            }
-        }
+        // if expr_info.is_exported(def_id) {
+        //     // Find dependents
+        //     self.ctx.push_dependents(self.def_fid);
+        //     while let Some(ref_fid) = self.ctx.worklist.pop() {
+        //         self.file(ref_fid);
+        //     }
+        // }
 
-        Some(self.references)
+        // Some(self.references)
+        todo!()
     }
 
     fn file(&mut self, ref_fid: TypstFileId) -> Option<()> {
-        log::debug!("references: file: {ref_fid:?}");
-        let ref_source = self.ctx.ctx.source_by_id(ref_fid).ok()?;
-        let def_use = self.ctx.ctx.def_use(ref_source.clone())?;
-        let uri = self.ctx.ctx.uri_for_id(ref_fid).ok()?;
+        // log::debug!("references: file: {ref_fid:?}");
+        // let ref_source = self.ctx.ctx.source_by_id(ref_fid).ok()?;
+        // let expr_info = self.ctx.ctx.expr_info(ref_source.clone())?;
+        // let uri = self.ctx.ctx.uri_for_id(ref_fid).ok()?;
 
-        let mut redefines = vec![];
-        if let Some((id, _def)) = def_use.get_def(self.def_fid, &self.def_ident) {
-            self.push_idents(&ref_source, &uri, def_use.get_refs(id));
+        // let mut redefines = vec![];
+        // if let Some((id, _def)) = expr_info.get_def(self.def_fid, &self.def_ident) {
+        //     self.push_idents(&ref_source, &uri, expr_info.get_refs(id));
 
-            redefines.push(id);
+        //     redefines.push(id);
 
-            if def_use.is_exported(id) {
-                self.ctx.push_dependents(ref_fid);
-            }
-        };
+        //     if expr_info.is_exported(id) {
+        //         self.ctx.push_dependents(ref_fid);
+        //     }
+        // };
 
-        // All references are not resolved since static analyzers doesn't know anything
-        // about labels (which is working at runtime).
-        if self.finding_label {
-            let label_refs = def_use.label_refs.get(&self.def_ident.name);
-            self.push_ranges(&ref_source, &uri, label_refs.into_iter().flatten());
-        }
+        // // All references are not resolved since static analyzers doesn't know
+        // anything // about labels (which is working at runtime).
+        // if self.finding_label {
+        //     let label_refs = expr_info.label_refs.get(&self.def_ident.name);
+        //     self.push_ranges(&ref_source, &uri, label_refs.into_iter().flatten());
+        // }
 
-        Some(())
+        // Some(())
+        todo!()
     }
 
     fn push_idents<'b>(&mut self, s: &Source, u: &Url, idents: impl Iterator<Item = &'b IdentRef>) {

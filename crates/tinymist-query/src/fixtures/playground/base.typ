@@ -1,2 +1,2 @@
-#let tmpl2(stroke) = text(stroke: stroke)
-#tmpl2(/* position */)
+// This is X.
+#let x /* ident */ = 1;

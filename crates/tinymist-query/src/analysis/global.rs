@@ -551,7 +551,7 @@ impl<'w> AnalysisContext<'w> {
 
     pub(crate) fn preload_package(&self, entry_point: TypstFileId) {
         let shared = self.shared_();
-        rayon::spawn(move || shared.preload_package(entry_point));
+        shared.preload_package(entry_point);
     }
 }
 
@@ -861,16 +861,16 @@ impl SharedContext {
 
     /// Check on a module before really needing them. But we likely use them
     /// after a while.
-    pub(crate) fn prefetch_type_check(self: &Arc<Self>, fid: TypstFileId) {
+    pub(crate) fn prefetch_type_check(self: &Arc<Self>, _fid: TypstFileId) {
         // log::debug!("prefetch type check {fid:?}");
-        let this = self.clone();
-        rayon::spawn(move || {
-            let Some(source) = this.world.source(fid).ok() else {
-                return;
-            };
-            this.type_check(&source);
-            // log::debug!("prefetch type check end {fid:?}");
-        });
+        // let this = self.clone();
+        // rayon::spawn(move || {
+        //     let Some(source) = this.world.source(fid).ok() else {
+        //         return;
+        //     };
+        //     this.type_check(&source);
+        //     // log::debug!("prefetch type check end {fid:?}");
+        // });
     }
 
     pub(crate) fn preload_package(self: Arc<Self>, entry_point: TypstFileId) {
@@ -884,14 +884,11 @@ impl SharedContext {
 
         impl Preloader {
             fn work(&self, fid: TypstFileId) {
-                use rayon::iter::IntoParallelRefIterator;
-                use rayon::iter::ParallelIterator;
-
                 log::debug!("preload package {fid:?}");
                 let source = self.shared.source_by_id(fid).ok().unwrap();
                 let expr = self.shared.expr_stage(&source);
                 self.shared.type_check(&source);
-                expr.imports.par_iter().for_each(|fid| {
+                expr.imports.iter().for_each(|fid| {
                     if !self.analyzed.lock().insert(*fid) {
                         return;
                     }
@@ -1025,14 +1022,15 @@ impl SearchCtx<'_, '_> {
 
 /// A rate limiter on some (cpu-heavy) action
 #[derive(Default)]
-pub struct RateLimiter {}
+pub struct RateLimiter {
+    token: std::sync::Mutex<()>,
+}
 
 impl RateLimiter {
     /// Executes some (cpu-heavy) action with rate limit
     #[must_use]
-    pub fn enter<T: Send + Sync + 'static>(&self, f: impl FnOnce() -> T + Send + Sync) -> T {
-        // Run in worker thread so that we won't have number of tasks larger than
-        // the number of threads.
-        rayon::scope(|_s| f())
+    pub fn enter<T>(&self, f: impl FnOnce() -> T) -> T {
+        let _c = self.token.lock().unwrap();
+        f()
     }
 }
